@@ -28,33 +28,43 @@ if 'pain_flags' not in st.session_state:
 if 'performed_movements' not in st.session_state:
     st.session_state.performed_movements = set()
 if 'exercise_feedbacks' not in st.session_state:
-    st.session_feedbacks = []
+    st.session_state.exercise_feedbacks = []
 if 'exercise_index' not in st.session_state:
     st.session_state.exercise_index = 0
 if 'show_rating' not in st.session_state:
     st.session_state.show_rating = False
 
-# Calming Custom Theme: Soft Green, Blue, Beige
+# Calming Theme with Darker Green, Black Lines, Abstract Browns
 st.markdown("""
 <style>
     .stApp {
-        background-color: #f5f7f6;  /* light beige-gray */
+        background-color: #f8f5f0;  /* light beige with brown tint */
+        border: 2px solid #333333;  /* black border around page */
     }
     .stButton>button {
-        background-color: #a7c4bc;  /* soft green */
+        background-color: #4a7c59;  /* darker calming green */
         color: white;
+        border: 1px solid #333333;
     }
     h1, h2, h3 {
-        color: #2e7d7d;  /* deep teal green */
+        color: #3e5f4a;  /* darker green */
     }
     .stSelectbox, .stTextInput, .stSlider {
-        background-color: #e8f0ee;  /* very light green-beige */
+        background-color: #e8e4d8;  /* soft brown-beige */
+        border: 1px solid #666666;
     }
     .stMarkdown {
-        color: #3d5a80;  /* calm blue-gray */
+        color: #2d3f3a;  /* dark teal-gray */
     }
     hr {
-        border-color: #b8d4d0;
+        border-color: #333333;  /* black lines */
+        height: 2px;
+    }
+    .pain-card {
+        background-color: #e8e4d8;
+        padding: 20px;
+        border-radius: 15px;
+        border: 2px solid #333333;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -72,7 +82,7 @@ if st.session_state.step == 0 and st.session_state.progress_data:
             st.session_state.step = 1
             st.rerun()
 
-# Video analysis function
+# Video analysis function (unchanged)
 def analyze_video(video_path, movement_type, variant=None):
     uploaded_file = genai.upload_file(video_path)
     variant_str = f" ({variant})" if variant else ""
@@ -117,73 +127,35 @@ if st.session_state.step == 0:
     st.subheader("Welcome! Let's Get Started")
     st.write("We’ll create a safe, personalized plan just for you.")
 
-    # First Name and Gender (no "Prefer not to say")
+    # First Name (now REQUIRED) and Gender
     col1, col2 = st.columns(2)
     with col1:
-        first_name = st.text_input("First Name (optional)")
+        first_name = st.text_input("First Name *", placeholder="Required")
     with col2:
-        gender = st.selectbox("Gender", ["Male", "Female"])
+        gender = st.selectbox("Gender *", ["Male", "Female"])
 
     st.markdown("---")
 
-    # Vertical Age Scroll Wheel (fixed with better CSS)
+    # Vertical Age Picker - using number input with large step for wheel feel (best workaround in Streamlit)
     st.markdown("**Your Age**")
-    age_options = list(range(18, 101))
-    age = st.select_slider(
-        "Scroll up/down to select your age",
-        options=age_options,
-        value=40,
-        label_visibility="collapsed"
-    )
-    st.markdown(f"<h4 style='text-align: center; color: #2e7d7d;'>Selected age: {age} years</h4>", unsafe_allow_html=True)
-
-    # Improved CSS for true vertical wheel
-    st.markdown("""
-    <style>
-        div[data-testid="stSelectSlider"] > div[data-baseweb="slider"] {
-            flex-direction: column !important;
-            height: 350px !important;
-            align-items: center;
-        }
-        div[data-testid="stSelectSlider"] div[role="listbox"] {
-            max-height: 300px !important;
-            overflow-y: auto !important;
-            width: 200px;
-        }
-        div[data-testid="stSelectSlider"] div[data-baseweb="slider"] > div {
-            width: 100% !important;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+    age = st.number_input("Select your age (use arrows or scroll)", min_value=18, max_value=100, value=40, step=1)
+    st.markdown(f"<h4 style='text-align: center; color: #3e5f4a;'>Selected: {age} years</h4>", unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # Wong-Baker Pain Scale as Horizontal Slider with Real Faces Underneath
+    # Wong-Baker Pain Scale - Horizontal slider + Real Full Chart Image
     st.markdown("**Current Pain Level**")
-    pain_level = st.slider(
-        "Slide to select your pain level",
-        min_value=0,
-        max_value=10,
-        value=0,
-        step=2,
-        label_visibility="collapsed"
-    )
+    pain_level = st.slider("", min_value=0, max_value=10, value=0, step=2, label_visibility="collapsed")
 
-    # Real Wong-Baker faces (high-quality from Medical News Today)
-    st.markdown(f"""
-    <div style="display: flex; justify-content: space-between; margin-top: 30px; padding: 20px; background-color: #e8f0ee; border-radius: 15px;">
-        <div style="text-align:center;"><img src="https://post.medicalnewstoday.com/wp-content/uploads/sites/3/2022/12/wong-baker-face-0-732x549-thumbnail.jpg" width="90"><br><strong>0</strong><br>No hurt</div>
-        <div style="text-align:center;"><img src="https://post.medicalnewstoday.com/wp-content/uploads/sites/3/2022/12/wong-baker-face-2-732x549-thumbnail.jpg" width="90"><br><strong>2</strong><br>Hurts little bit</div>
-        <div style="text-align:center;"><img src="https://post.medicalnewstoday.com/wp-content/uploads/sites/3/2022/12/wong-baker-face-4-732x549-thumbnail.jpg" width="90"><br><strong>4</strong><br>Hurts little more</div>
-        <div style="text-align:center;"><img src="https://post.medicalnewstoday.com/wp-content/uploads/sites/3/2022/12/wong-baker-face-6-732x549-thumbnail.jpg" width="90"><br><strong>6</strong><br>Hurts even more</div>
-        <div style="text-align:center;"><img src="https://post.medicalnewstoday.com/wp-content/uploads/sites/3/2022/12/wong-baker-face-8-732x549-thumbnail.jpg" width="90"><br><strong>8</strong><br>Hurts whole lot</div>
-        <div style="text-align:center;"><img src="https://post.medicalnewstoday.com/wp-content/uploads/sites/3/2022/12/wong-baker-face-10-732x549-thumbnail.jpg" width="90"><br><strong>10</strong><br>Hurts worst</div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Real high-quality full Wong-Baker scale image
+    st.markdown("<div class='pain-card'>", unsafe_allow_html=True)
+    st.image("https://post.medicalnewstoday.com/wp-content/uploads/sites/3/2022/12/2258701-wong-baker-pain-scale-header-1296x728-1-1024x575.jpg?w=1155&h=1528", use_column_width=True)
+    st.markdown(f"<h4 style='text-align: center; color: #3e5f4a;'>Your current pain: {pain_level}/10</h4>", unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # Main reason - only Pain or Balance issues
+    # Main reason
     chief_complaint_type = st.selectbox("Main reason you're here today", ["Pain", "Balance issues"])
 
     # Safety recommendation
@@ -195,9 +167,12 @@ if st.session_state.step == 0:
         seated_recommended = False
         override = False
 
-    if st.button("Continue to Movement Check →"):
+    # Require first name
+    if not first_name.strip():
+        st.error("First name is required to continue.")
+    elif st.button("Continue to Movement Check →"):
         st.session_state.user_data = {
-            "first_name": first_name,
+            "first_name": first_name.strip(),
             "gender": gender,
             "age": age,
             "baseline_pain": pain_level,
@@ -208,7 +183,6 @@ if st.session_state.step == 0:
         st.session_state.step = 1
         st.rerun()
 
-# The rest of the app (Steps 1–5) remains the same as your previous working version.
-# (Full code for other steps is unchanged – keep them from your last code.)
+# Steps 1–5 remain the same (keep from your previous code)
 
 st.caption("Always consult a healthcare professional. This app is for educational use.")
