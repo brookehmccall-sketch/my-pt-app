@@ -18,7 +18,7 @@ if 'progress_data' not in st.session_state:
 if 'current_exercises' not in st.session_state:
     st.session_state.current_exercises = []
 if 'step' not in st.session_state:
-    st.session_state.step = 0  # 0: Initial Assessment, 1: Movement Screens, 2: Pain & Safety, 3: Recommendations, 4: Post-Exercise, 5: End
+    st.session_state.step = 0
 if 'user_data' not in st.session_state:
     st.session_state.user_data = {}
 if 'analysis_results' not in st.session_state:
@@ -34,25 +34,22 @@ if 'exercise_index' not in st.session_state:
 if 'show_rating' not in st.session_state:
     st.session_state.show_rating = False
 
-st.title("AI Physical Therapy App")
-st.write("This app guides you through a structured physical therapy session using Gemini for video analysis. Follow the steps below.")
+st.title("My Personal PT Coach")
+st.markdown("### AI-Powered Physical Therapy • Personalized • Safe")
 
 # Check for weekly reassessment
 if st.session_state.step == 0 and st.session_state.progress_data:
     last_entry = st.session_state.progress_data[-1]
     last_date = datetime.strptime(last_entry["date"], "%Y-%m-%d %H:%M")
     if datetime.now() - last_date > timedelta(days=7):
-        st.warning("It's time for your weekly reassessment.")
-        if st.button("Perform Weekly Reassessment"):
+        st.info("🌟 It's time for your weekly reassessment to track progress!")
+        if st.button("Start Weekly Reassessment"):
             st.session_state.step = 1
             st.rerun()
 
 # Function to analyze video using Gemini
 def analyze_video(video_path, movement_type, variant=None):
-    # Upload video to Gemini
     uploaded_file = genai.upload_file(video_path)
-    
-    # Prepare prompt
     variant_str = f" ({variant})" if variant else ""
     prompt = f"""
     Analyze this video for {movement_type}{variant_str} assessment in a physical therapy context.
@@ -65,56 +62,74 @@ def analyze_video(video_path, movement_type, variant=None):
     - Fall risk: low, medium, high based on balance and asymmetries
     
     Output as JSON with keys: 
-    - metrics: dict of quantified values (e.g., {'step_count': int, 'asymmetry_hip': float, ...})
+    - metrics: dict
     - weak_muscles: list of strings
     - fall_risk: string (low/medium/high)
     """
-    
     model = genai.GenerativeModel('gemini-1.5-flash')
     response = model.generate_content([prompt, uploaded_file])
-    
-    # Parse JSON from response
     try:
-        analysis = json.loads(response.text.strip('```json').strip('```'))
-    except json.JSONDecodeError:
-        st.error("Failed to parse analysis. Raw response: " + response.text)
-        return {"weak_muscles": [], "fall_risk": "low", "metrics": {}}
-    
-    # Clean up uploaded file
+        analysis = json.loads(response.text.strip('```json\n').strip('```'))
+    except:
+        st.error("Analysis failed. Try a shorter, clearer video.")
+        analysis = {"weak_muscles": [], "fall_risk": "low", "metrics": {}}
     genai.delete_file(uploaded_file.name)
-    
     return analysis
 
-# Function to update analysis results
 def update_analysis(new_analysis, movement_type):
     for w in new_analysis["weak_muscles"]:
         if w not in st.session_state.analysis_results["weak_muscles"]:
             st.session_state.analysis_results["weak_muscles"].append(w)
     fall_num = {"low": 1, "medium": 2, "high": 3}
-    current_fall = st.session_state.analysis_results["fall_risk"]
-    if fall_num[new_analysis["fall_risk"]] > fall_num[current_fall]:
+    current = st.session_state.analysis_results["fall_risk"]
+    if fall_num[new_analysis["fall_risk"]] > fall_num[current]:
         st.session_state.analysis_results["fall_risk"] = new_analysis["fall_risk"]
     st.session_state.analysis_results["metrics"][movement_type] = new_analysis["metrics"]
     st.session_state.performed_movements.add(movement_type)
 
 # Step 0: Initial Assessment
 if st.session_state.step == 0:
-    st.subheader("Initial Assessment")
-    age = st.markdown( " " " <style> .stSelectSlider [data-baseweb="select"]{flex-direction: column; height: 300px; flex-direction: column; height: 300px; }
-                      .stSelectSlider [role="listbox"] {max-height: 250px; overflow-y:auto; } </style> " " " , unsafe_allow_html=True)
-    baseline_pain = st.slider("Baseline pain level (0-10)", 0, 10, 0)
-    chief_complaint_type = st.selectbox("Chief complaint", ["Pain", "Balance", "Other"])
-    original_complaint = st.text_area("Describe your original complaint or issue")
+    st.subheader("Welcome! Let's Get Started")
+    st.write("Tell us a bit about yourself for a safe, personalized plan.")
+
+    st.markdown("**Your Age**")
+    age_options = list(range(18, 101))  # Ages 18 to 100
+    age = st.select_slider(
+        "Scroll to select your age",
+        options=age_options,
+        value=40,
+        format_func=lambda x: f"{x} years",
+        label_visibility="collapsed"
+    )
+
+    # Custom CSS for vertical wheel-like feel
+    st.markdown("""
+    <style>
+        div[row-widget] > div[style*="flex-direction: row"] {
+            flex-direction: column !important;
+            height: 300px;
+        }
+        div[row-widget] div[role="listbox"] {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    baseline_pain = st.slider("Current pain level (0 = none, 10 = worst)", 0, 10, 3)
+
+    chief_complaint_type = st.selectbox("Main reason you're here today", ["Pain", "Balance issues", "Stiffness", "Weakness", "Recovery from injury", "General fitness"])
+    original_complaint = st.text_area("Describe your issue or goal (optional)")
 
     if age > 50 or baseline_pain > 4:
-        st.warning("Based on your age or pain level, we recommend seated exercises for safety.")
-        override = st.checkbox("Override and proceed with standing exercises")
+        st.info("🛡️ We'll recommend gentle, seated-friendly exercises for safety. You can override if comfortable.")
+        override = st.checkbox("I prefer standing exercises")
         seated_recommended = not override
     else:
         seated_recommended = False
         override = False
 
-    if st.button("Proceed to Movement Screens"):
+    if st.button("Continue to Movement Check →"):
         st.session_state.user_data = {
             "age": age,
             "baseline_pain": baseline_pain,
@@ -235,7 +250,7 @@ elif st.session_state.step == 3:
     if analysis["fall_risk"] != "low":
         add_balance = st.checkbox("Add additional exercises to improve balance")
 
-    if user_data["chief_complaint_type"] == "Balance":
+    if user_data["chief_complaint_type"] == "Balance issues":
         st.info("Focusing on balance exercises since chief complaint is balance.")
 
     instruction_type = st.selectbox("Select Instructions", ["Text Guide", "Video Demo", "Voice Guide"])
@@ -247,7 +262,7 @@ elif st.session_state.step == 3:
         model = genai.GenerativeModel('gemini-1.5-flash')
         
         spine_pain = any("back" in p.lower() or "spine" in p.lower() or "neck" in p.lower() for p in analysis["pain_areas"])
-        primary_focus = "balance" if user_data["chief_complaint_type"] == "Balance" else ("spine" if spine_pain else "joint")
+        primary_focus = "balance" if user_data["chief_complaint_type"] == "Balance issues" else ("spine" if spine_pain else "joint")
         
         prompt = f"""
         User data: Age {user_data['age']}, Baseline pain {user_data['baseline_pain']}, Chief complaint type: {user_data['chief_complaint_type']}, Complaint: {user_data['original_complaint']}.
@@ -263,7 +278,7 @@ elif st.session_state.step == 3:
         For spinal exercises, offer standing or chair versions.
         Feedback: {difficulty_feedback}.
         """
-        if add_balance or user_data["chief_complaint_type"] == "Balance":
+        if add_balance or user_data["chief_complaint_type"] == "Balance issues":
             prompt += " Include additional balance exercises if fall risk is increased. If chief complaint is balance, focus only on balance exercises."
         prompt += " Format as a list with descriptions."
 
@@ -384,4 +399,4 @@ elif st.session_state.step == 5:
         st.session_state.show_rating = False
         st.rerun()
 
-st.write("Note: This is a prototype app. Consult a professional physical therapist for personalized advice. For mobile use, access via browser and add to home screen.")
+st.caption("Always consult a healthcare professional. This app is for educational use.")
