@@ -100,7 +100,8 @@ def update_analysis(new_analysis, movement_type):
 # Step 0: Initial Assessment
 if st.session_state.step == 0:
     st.subheader("Initial Assessment")
-    age = st.slider("Enter your age", min_value=0, max_value=120)
+    age = st.markdown( " " " <style> .stSelectSlider [data-baseweb="select"]{flex-direction: column; height: 300px; flex-direction: column; height: 300px; }
+                      .stSelectSlider [role="listbox"] {max-height: 250px; overflow-y:auto; } </style> " " " , unsafe_allow_html=True)
     baseline_pain = st.slider("Baseline pain level (0-10)", 0, 10, 0)
     chief_complaint_type = st.selectbox("Chief complaint", ["Pain", "Balance", "Other"])
     original_complaint = st.text_area("Describe your original complaint or issue")
